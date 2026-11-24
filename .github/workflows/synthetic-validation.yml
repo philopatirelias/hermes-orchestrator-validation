@@ -1,0 +1,38 @@
+name: Synthetic validation
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+
+jobs:
+  fixture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Test the slug fixture
+        run: |
+          python3 - <<'PY'
+          import subprocess
+          import sys
+
+          cases = {
+              "  Hello, World!  ": "hello-world",
+              "Day---Two__Done": "day-two-done",
+              "No. 42": "no-42",
+              "   ": "",
+          }
+          for value, expected in cases.items():
+              result = subprocess.run(
+                  [sys.executable, "-I", "-B", "normalize.py", value],
+                  capture_output=True, text=True, check=True, timeout=5,
+              )
+              assert result.stdout == expected + "\n", (value, result.stdout, expected)
+              assert not result.stderr, result.stderr
+          print(f"{len(cases)} synthetic assertions passed")
+          PY
